@@ -1,0 +1,6 @@
+2020.03.20
+*changed text in center to say average NPV per year
+*changed fixed value to two decimal places for curentDecayValCalc and $decayValue
+*average NPVs are now formatted properly with two decimal places and commas in the history
+*fixed bug where another history entry would be entered by toggling previous and next buttons
+*fixed bugs where reset button cause unexpected behavior, replaced remove calls with location.reload()

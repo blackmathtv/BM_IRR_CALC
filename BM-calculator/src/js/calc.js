@@ -4,7 +4,7 @@
       // 
       // Calc properties - default values so nothing breaks
       // 
-
+      $completeNotReset: false,
       // Cash flows
       $cashFlows: [],
       $cashFlowsPos: [],
@@ -53,13 +53,15 @@
         calc.$chart = $('#chart-main');
         calc.$chartControls = $('#chart-controls');
         calc.$progressBar = $('#step-progress-bar');
-
+        calc.$progressBarOriginalState = $('#step-progress-bar').clone();
         calc.$sliderPopover = $(".slider_tutorial");
         calc.$resultsPopover = $(".results_tutorial");
 
         calc.$stepMessage = $('#step-message');
         calc.$prevBtn = $('#prev-btn');
         calc.$nextBtn = $('#next-btn');
+
+        calc.$dollarSVG = $('#dollar-svg');
 
         calc.$stepMessages = [
           "Multiply each year by it's discount factor",
@@ -68,7 +70,8 @@
         ];
 
         calc.$timeouts = [];
-
+        
+        
         // Input should be focused on load
         calc.$cashFlowInput.focus();
 
@@ -134,7 +137,7 @@
           e.preventDefault();
 
           calc.step_1();
-
+          //set time between steps
           calc.$timeouts.push(setTimeout(function() { calc.step_2(); }, 3000));
           calc.$timeouts.push(setTimeout(function() { calc.step_3(); }, 6000));
           calc.$timeouts.push(setTimeout(function() { calc.step_4(); }, 6300));
@@ -264,6 +267,7 @@
         calc.$chartControls.addClass('chart-controls--active');
         calc.$stepMessage.html(calc.$stepMessages[0]);
         calc.$prevBtn.attr('disabled', 'disabled');
+        calc.$progressBar.attr('data-active-step', calc.$activeStep);
 
         if ($('#bar-style')) {
           var barStyle = document.createElement('style');
@@ -437,13 +441,14 @@
       },
 
       step_5: function() {
-        const finalSum = calc.$cashFlowsTotals[2],
-              finalMessage = '<div class="chart-final-message" id="chart-final-message"><p class="final-header">Net Present Value</p><span id="final-value">$' + calc.addCommas(calc.$cashFlowsTotals[2]) + '</span>';
+        const avgNpvYr = calc.$cashFlowsTotals[2].toFixed(2),
+              finalMessage = '<div class="chart-final-message" id="chart-final-message"><p class="final-header">Average NPV per year</p><span id="final-value">$' + calc.addCommas(avgNpvYr) + '</span>';
               finalMessageAddOn = '<p class="final-message" id="final-message">You\'ve found the IRR!</p></div>';
         
         let finalHTML;
+        
 
-        if (finalSum === 0) {
+        if (avgNpvYr === 0) {
           finalHTML = finalMessage + finalMessageAddOn;
         } else {
           finalHTML = finalMessage;
@@ -457,9 +462,11 @@
         calc.$activeStep = 5;
         calc.$progressBar.attr('data-active-step', calc.$activeStep);
 
+        //can't figure out what this is for, doesnt seem to matter
         calc.$stackedChart.series[0].update({
-          data: [finalSum, finalSum]
+          data: [avgNpvYr, avgNpvYr]
         });
+        
 
         setTimeout(function() {
           const overflowHeight = $('#overflow-hide').height();
@@ -491,8 +498,11 @@
           }, 200);
         }, 1300);
 
-        calc.displayRes(calc.$rateGrowth, calc.$cashFlowsTotals[2]);
+        if (!calc.$completeNotReset) {
+          calc.displayRes(calc.$rateGrowth, calc.addCommas(avgNpvYr));
+        }
         // $('#hidden-final-chart .highcharts-series .highcharts-point:not(.highcharts-negative)').css('transform', 'translateY(100px)');
+        calc.$completeNotReset = true;  
       },
 
       // Cash Flows
@@ -509,6 +519,8 @@
         if (decimalInt === 'NaN') {
           alert('Please enter a valid number');
         } else {
+          
+          //Jade here is where the vectors  will go for the dollar icons
           const newCashFlowEl = '<li>$' + calc.addCommas(decimalInt) + '<a href="#" class="remove-cash-flow"></a>';
 
           $(calc.$cashFlowList).append(newCashFlowEl);
@@ -548,11 +560,11 @@
 
         // intital decay slider value
         dValue = (1 - (1 / (1 + calc.$rateGrowth))) * 100;
-        dValueCalc = (Math.round(dValue)).toFixed(0);
+        dValueCalc = (Math.round(dValue)).toFixed(2);
         // console.log('dValueCalc: ' + dValueCalc);
         calc.$rateDecay = dValueCalc / 100;
         // console.log("rate decay " + calc.$rateDecay);
-        calc.$decayValue.html((1 - calc.$rateDecay).toFixed(1));
+        calc.$decayValue.html((1 - calc.$rateDecay).toFixed(2));
         // console.log("discount factor " + (1 - calc.$rateDecay));
       },
 
@@ -567,11 +579,11 @@
 
         // current decay slider value
         currentDecayVal = (1 - (1 / (1 + calc.$rateGrowth))) * 100;
-        currentDecayValCalc = (Math.round(currentDecayVal)).toFixed(0);
+        currentDecayValCalc = (Math.round(currentDecayVal)).toFixed(2);
         // console.log('currentDecayValCalc: ' + currentDecayValCalc);
         calc.$rateDecay = currentDecayValCalc / 100;
         // console.log("rate decay " + calc.$rateDecay);
-        calc.$decayValue.html((1 - calc.$rateDecay).toFixed(1));
+        calc.$decayValue.html((1 - calc.$rateDecay).toFixed(2));
         // console.log('discount factor ' + (1 - calc.$rateDecay));
       },
 
@@ -674,14 +686,20 @@
       },
 
       resetApp: function () {
+        location.reload();
+        /*
         // remove all history
         $('#calc-res li').remove();
+
+        //clear completeNotReset
+        calc.$completeNotReset = false
 
         // remove all cashflow elements
         $('#cash-flow-list li').remove();
 
         // reset slider to default
         calc.initialRates();
+        ;
 
         // cashflows empty
         calc.$cashFlows = [];
@@ -711,9 +729,16 @@
         $('.highcharts-container').css('display', 'none');
 
         calc.$cashFlowInput.focus();
+        */
       },
 
       runAgain: function () {
+        calc.$completeNotReset = false;
+
+        //hacky code that resets the meter visually without transitions 
+        $('#step-progress-bar').replaceWith(calc.$progressBarOriginalState);
+        $('#step-progress-bar').replaceWith(calc.$progressBar);
+        
         // chart move
         $('#hidden-final-chart').addClass('runAgainTransform');
         // $('#hidden-final-chart .highcharts-container').css('transform', 'translateY(400px)');
